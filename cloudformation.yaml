@@ -1,0 +1,219 @@
+Description: AWS CloudFormation template for vroom resources
+
+Parameters:
+  SNSEmail:
+    Description: Email to receive SNS alerts
+    Type: String
+  
+  PostgresPassword:
+    Description: Password for the postgres user of the Aurora database
+    Type: String
+
+  DatabaseResources:
+    Description: Specify which billable database resources to create as part of this template
+    Default: None
+    Type: String
+    AllowedValues:
+      - None
+      - All
+    ConstraintDescription: Must specify one of the allowed values
+
+Conditions:
+  CreateAllDatabaseResources: !Equals [!Ref DatabaseResources, "All" ]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.10.1.0/21
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: hub01
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      CidrBlock: 10.10.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet01
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+      CidrBlock: 10.10.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet02
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs "" ]
+      CidrBlock: 10.10.3.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet03
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      CidrBlock: 10.10.4.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet04
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+      CidrBlock: 10.10.5.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet05
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs "" ]
+      CidrBlock: 10.10.6.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: subnet06
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+        - Key: Application
+          Value: vroom
+        - Key: Name
+          Value: hub01
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: vroom
+      SecurityGroupEgress: 
+        - Egress
+      SecurityGroupIngress: 
+        - Ingress
+      Tags: 
+        - Key: Application
+          Value: vroom
+      VpcId: !Ref VPC
+
+  # Default SNS topic for vroom services
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: vroom
+      FifoTopic: false
+      Subscription: 
+        - Subscription
+      Tags: 
+        - Key: Application
+          Value: vroom
+      TopicName: vroom
+
+  # Default SNS email subscription for vroom notifications
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref SNSEmail
+      Protocol: email
+      TopicArn: !GetAtt SNSTopic.TopicArn
+  
+  # RDS Subnet Group for the Aurora database
+  SubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group for the vroom database in hub01 VPC"
+      DBSubnetGroupName: vroom
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      Tags: 
+        - Key: Application
+          Value: vroom
+
+  # Amazon Aurora PostgreSQL cluster
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Condition: CreateAllDatabaseResources
+    Properties:
+      AutoMinorVersionUpgrade: false
+      AvailabilityZones: 
+        - !Select [ 0, !GetAZs "" ]
+        - !Select [ 1, !GetAZs "" ]
+        - !Select [ 2, !GetAZs "" ]
+      CopyTagsToSnapshot: true
+      DatabaseInsightsMode: standard
+      DatabaseName: vroom
+      DBClusterIdentifier: vroom
+      DBClusterParameterGroupName: default.aurora-postgresql16
+      DBSubnetGroupName: !Ref SubnetGroup
+      DeleteAutomatedBackups: true
+      DeletionProtection: false
+      EnableGlobalWriteForwarding: false
+      EnableHttpEndpoint: false
+      EnableIAMDatabaseAuthentication: false
+      EnableLocalWriteForwarding: false
+      Engine: aurora-postgresql
+      EngineLifecycleSupport: open-source-rds-extended-support-disabled
+      EngineMode: provisioned
+      EngineVersion: "16.6"
+      ManageMasterUserPassword: false
+      MasterUsername: postgres
+      MasterUserPassword: !Ref PostgresPassword
+      NetworkType: IPv4
+      PerformanceInsightsEnabled: false
+      Port: 5432
+      PubliclyAccessible: false
+      ServerlessV2ScalingConfiguration: 
+        MinCapacity: 0.5
+        MaxCapacity: 5
+      StorageEncrypted: true
+      StorageType: aurora
+      Tags: 
+        - Key: Application
+          Value: vroom
+      UseLatestRestorableTime: false
+      VpcSecurityGroupIds: 
+        - String
