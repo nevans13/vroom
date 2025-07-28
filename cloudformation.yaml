@@ -5,22 +5,6 @@ Parameters:
     Description: Email to receive SNS alerts
     Type: String
   
-  PostgresPassword:
-    Description: Password for the postgres user of the Aurora database
-    Type: String
-
-  DatabaseResources:
-    Description: Specify which billable database resources to create as part of this template
-    Default: None
-    Type: String
-    AllowedValues:
-      - None
-      - All
-    ConstraintDescription: Must specify one of the allowed values
-
-Conditions:
-  CreateAllDatabaseResources: !Equals [!Ref DatabaseResources, "All" ]
-
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -143,7 +127,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       DisplayName: vroom
-      FifoTopic: false
       Subscription: 
         - Subscription
       Tags: 
@@ -159,61 +142,14 @@ Resources:
       Protocol: email
       TopicArn: !GetAtt SNSTopic.TopicArn
   
-  # RDS Subnet Group for the Aurora database
-  SubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
+  # S3 table Bucket to serve as the database
+  TableBucket:
+    Type: AWS::S3Tables::TableBucket
     Properties:
-      DBSubnetGroupDescription: "Subnet group for the vroom database in hub01 VPC"
-      DBSubnetGroupName: vroom
-      SubnetIds:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-        - !Ref PublicSubnet3
-      Tags: 
-        - Key: Application
-          Value: vroom
-
-  # Amazon Aurora PostgreSQL cluster
-  AuroraCluster:
-    Type: AWS::RDS::DBCluster
-    Condition: CreateAllDatabaseResources
-    Properties:
-      AutoMinorVersionUpgrade: false
-      AvailabilityZones: 
-        - !Select [ 0, !GetAZs "" ]
-        - !Select [ 1, !GetAZs "" ]
-        - !Select [ 2, !GetAZs "" ]
-      CopyTagsToSnapshot: true
-      DatabaseInsightsMode: standard
-      DatabaseName: vroom
-      DBClusterIdentifier: vroom
-      DBClusterParameterGroupName: default.aurora-postgresql16
-      DBSubnetGroupName: !Ref SubnetGroup
-      DeleteAutomatedBackups: true
-      DeletionProtection: false
-      EnableGlobalWriteForwarding: false
-      EnableHttpEndpoint: false
-      EnableIAMDatabaseAuthentication: false
-      EnableLocalWriteForwarding: false
-      Engine: aurora-postgresql
-      EngineLifecycleSupport: open-source-rds-extended-support-disabled
-      EngineMode: provisioned
-      EngineVersion: "16.6"
-      ManageMasterUserPassword: false
-      MasterUsername: postgres
-      MasterUserPassword: !Ref PostgresPassword
-      NetworkType: IPv4
-      PerformanceInsightsEnabled: false
-      Port: 5432
-      PubliclyAccessible: false
-      ServerlessV2ScalingConfiguration: 
-        MinCapacity: 0.5
-        MaxCapacity: 5
-      StorageEncrypted: true
-      StorageType: aurora
-      Tags: 
-        - Key: Application
-          Value: vroom
-      UseLatestRestorableTime: false
-      VpcSecurityGroupIds: 
-        - String
+      EncryptionConfiguration: 
+        SSEAlgorithm: AES256
+      TableBucketName: vroom
+      UnreferencedFileRemoval: 
+          NoncurrentDays: 1
+          Status: Enabled
+          UnreferencedDays: 1
