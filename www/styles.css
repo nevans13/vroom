@@ -1,0 +1,65 @@
+/* Color palette: https://coolors.co/010101-6b818c-66101f-fe8471-f7f4f3 */
+
+:root {
+  --black: #010101;
+  --gray: #6b818c;
+  --plum: #66101f;
+  --tomato: #fe8471;
+  --white: #f7f4f3;
+}
+
+a {
+  color: var(--black);
+  font-style: italic;
+  text-decoration: none;
+}
+
+a.header {
+  color: var(--black);
+  font-size: 176%;
+  font-style: normal;
+  margin-left: 16px;
+  margin-right: 16px;
+  text-decoration: none;
+}
+
+body {
+  background-color: var(--white);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+button#publicIpButton {
+  font-size: 112%;
+}
+
+div.content {
+  margin-left: 16%;
+  margin-right: 16%;
+}
+
+div.section {
+  margin-left: 16%;
+  margin-right: 16%;
+}
+
+hr.header {
+  background-color: var(--black);
+  border-width: 0px;
+  height: 2px;
+  width: 100%;
+}
+
+hr.subheader {
+  background-color: var(--black);
+  border-width: 0px;
+  height: 2px;
+  margin-bottom: 48px;
+  width: 48%;
+}
+
+p.header {
+  font-size: 248%;
+  font-weight: lighter;
+  margin-bottom: 32px;
+  margin-top: 24px;
+}
