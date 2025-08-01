@@ -5,6 +5,10 @@ Parameters:
     Description: Email to receive SNS alerts
     Type: String
   
+  WebpageFQDN:
+    Description: FQDN of the vroom webpage
+    Type: String
+  
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -114,10 +118,6 @@ Resources:
     Properties:
       GroupDescription: Default security group for vroom
       GroupName: vroom
-      SecurityGroupEgress: 
-        - Egress
-      SecurityGroupIngress: 
-        - Ingress
       Tags: 
         - Key: Application
           Value: vroom
@@ -140,15 +140,67 @@ Resources:
       Endpoint: !Ref SNSEmail
       Protocol: email
       TopicArn: !GetAtt SNSTopic.TopicArn
+
+  HostedZone:  
+    Type: AWS::Route53::HostedZone
+    Properties:
+      HostedZoneTags: 
+        - Key: Application
+          Value: vroom
+      Name: !Ref WebpageFQDN
   
-  # S3 table Bucket to serve as the database
+  # S3 General Bucket to serve the static web content
+  WebpageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: vroom-webpage-819065003150
+      PublicAccessBlockConfiguration: 
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags: 
+        - Key: Application
+          Value: vroom
+      WebsiteConfiguration: 
+        ErrorDocument: "404.html"
+        IndexDocument: "index.html"
+  
+  # S3 Bucket Policy to permit any source to access the static website contents
+  WebpageBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebpageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - SID: "PublicReadGetObject"
+            Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Resource: !Join [ "", [ "arn:aws:s3:::", !Ref WebpageBucket, "/*" ] ]
+            Principal: "*"
+
+  # S3 Table Bucket to serve as the database
   TableBucket:
     Type: AWS::S3Tables::TableBucket
     Properties:
       EncryptionConfiguration: 
         SSEAlgorithm: AES256
-      TableBucketName: vroom
+      TableBucketName: vroom-database-819065003150
       UnreferencedFileRemoval: 
           NoncurrentDays: 1
           Status: Enabled
           UnreferencedDays: 1
+
+  # Route 53 record for the webpage
+  WebpageDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      MultiValueAnswer: false
+      Name: !Ref WebpageFQDN
+      ResourceRecords: 
+        - !Join [ "", [ !Ref WebpageBucket, ".s3-website.us-east-2.amazonaws.com" ] ]
+      TTL: "300"
+      Type: CNAME
